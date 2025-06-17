@@ -1,6 +1,6 @@
 ## Adaptive Bitrate Streaming POC
 
-A simple POC of Adaptive Bitrate Streaming using PHP, ffmpeg and Google's Shaka Player
+A simple POC of Adaptive Bitrate Streaming with DASH protocol, PHP, ffmpeg and Google's Shaka Player
 
 ### Building the image
 ```bash

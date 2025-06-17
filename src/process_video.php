@@ -110,4 +110,4 @@ $cmd .= "-f dash {$uploads_dir}/manifest.mpd )";
 
 $full_cmd = "nohup bash -c " . escapeshellarg($cmd) . " > /dev/null 2>&1 &";
 echo "Running command > {$full_cmd} <br/>";
-//shell_exec($full_cmd);
+shell_exec($full_cmd);
