@@ -1,18 +1,25 @@
 <?php
+$configs = require_once "configs.php";
+require_once("functions.php");
 
-function get_video_stream_metadata($video_metadata) {
-    return array_filter($video_metadata["streams"], function($stream) {
-        return $stream["codec_type"] == "video";
-    })[0];
-}
+initialize_session();
+guard();
 
-echo $_FILES["video"]["name"] . "<br/>";
-echo $_FILES["video"]["type"] . "<br/>";
-echo $_FILES["video"]["tmp_name"] . "<br/>";
-echo $_FILES["video"]["error"] . "<br/>";
-echo $_FILES["video"]["size"] . "<br/>";
+$database = $configs["database"];
 
-$uploads_dir = "/storage/videos";
+$pdo = new PDO("mysql:host={$database["host"]};dbname={$database["db_name"]}", $database["username"], $database["password"]);
+
+$video_id = uniqid();
+$title = "Default Title";
+
+$stmt = $pdo->prepare("INSERT INTO videos (id, title) VALUES (:id, :title)");
+$stmt->bindParam(":id", $video_id);
+$stmt->bindParam(":title", $title);
+$stmt->execute();
+
+$uploads_dir = "/storage/videos/{$video_id}";
+mkdir($uploads_dir);
+
 $filename = $_FILES["video"]["name"];
 $tmp_file = $_FILES["video"]["tmp_name"];
 
@@ -23,7 +30,7 @@ if (!move_uploaded_file($tmp_file, $upload_file)) {
 
 # Gets video metadata in json format
 $command = "ffprobe -v error -show_format -of json -show_streams {$upload_file}";
-echo "Running command > {$command} <br/>";
+//echo "Running command > {$command} <br/>";
 $output_json = shell_exec($command);
 //echo "<pre>$output_json</pre>";
 
@@ -106,8 +113,17 @@ for ($i = 0; $i < $representations_count; $i++) {
 $cmd .= "-c copy ";
 $cmd .= "-use_timeline 1 -use_template 1 ";
 $cmd .= "-adaptation_sets \"id=0,streams=v id=1,streams=a\" ";
-$cmd .= "-f dash {$uploads_dir}/manifest.mpd )";
+$cmd .= "-init_seg_name \"init-stream\\\$RepresentationID\\\$.m4s\" ";
+$cmd .= "-media_seg_name \"chunk-stream\\\$RepresentationID\\\$-\\\$Number%05d\\\$.m4s\" ";
+$cmd .= "-f dash {$uploads_dir}/manifest.mpd ) && ";
+
+
+$cmd .= "sed -i 's|initialization=\"init-|initialization=\"segment.php?videoid={$video_id}\&amp;file=init-|g' {$uploads_dir}/manifest.mpd && ";
+$cmd .= "sed -i 's|media=\"chunk-|media=\"segment.php?videoid={$video_id}\&amp;file=chunk-|g' {$uploads_dir}/manifest.mpd ";
 
 $full_cmd = "nohup bash -c " . escapeshellarg($cmd) . " > /dev/null 2>&1 &";
-echo "Running command > {$full_cmd} <br/>";
+//echo "Running command > {$full_cmd} <br/>";
 shell_exec($full_cmd);
+
+header("Location: /");
+exit();

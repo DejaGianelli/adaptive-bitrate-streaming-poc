@@ -1,5 +1,14 @@
 FROM php:8.4.8-apache
 
+# Mysql
+RUN apt-get update && docker-php-ext-install pdo pdo_mysql
+RUN apt-get install -y default-mysql-client
+
+# Network tools for debugging purposes
+RUN apt-get update && \
+    apt-get install -y iputils-ping net-tools traceroute curl dnsutils && \
+    apt-get clean
+
 ENV TZ="UTC"
 
 COPY ./ffmpeg /ffmpeg

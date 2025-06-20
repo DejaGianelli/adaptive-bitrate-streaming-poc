@@ -1,13 +1,33 @@
-<!DOCTYPE html>
-<html lang="en">
+<?php
+$configs = require_once "configs.php";
+require_once("functions.php");
+
+$database = $configs["database"];
+
+initialize_session();
+guard();
+
+$pdo = new PDO("mysql:host={$database["host"]};dbname={$database["db_name"]}", $database["username"], $database["password"]);
+
+$video_id = $_GET["videoid"];
+$manifest_uri = "http://localhost:8080/manifest.php?videoid={$video_id}";
+
+$stmt = $pdo->prepare("SELECT id, title FROM videos WHERE id = :id");
+$stmt->bindParam(":id", $video_id);
+$stmt->execute();
+$video = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$video) {
+    http_response_code(404);
+    echo "Video not found";
+    exit;
+}
+?>
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
     <script src="./shaka-player.compiled.debug.js"></script>
     <script>
-        const manifestUri = 'http://localhost:8080/storage/videos/manifest.mpd';
+        const manifestUri = '<?php echo $manifest_uri ?>';
 
         function initApp() {
             // Install built-in polyfills to patch browser incompatibilities.
@@ -60,16 +80,8 @@
         document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </head>
-
 <body>
-    <h1>Escolha um vídeo</h1>
-    <form method="post" action="process_video.php" enctype="multipart/form-data">
-        <label for="avatar">Choose a video:</label>
-        <input type="file" id="video-upload-input" name="video" />
-        <input type="submit" value="Upload" />
-    </form>
-
-    <video id="video" width="640" poster="//shaka-player-demo.appspot.com/assets/poster.jpg" controls autoplay></video>
+    <a href="/">Home</a>
+    <h1><?= $video["title"]; ?></h1>
+    <video id="video" width="640" poster="//shaka-player-demo.appspot.com/assets/poster.jpg" controls></video>
 </body>
-
-</html>
