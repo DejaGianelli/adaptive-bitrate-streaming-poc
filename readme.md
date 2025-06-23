@@ -1,34 +1,43 @@
-## Adaptive Bitrate Streaming POC
+# Adaptive Bitrate Streaming POC
 
 A simple POC of Adaptive Bitrate Streaming with DASH protocol, PHP, ffmpeg and Google's Shaka Player
 
-### Building the development image
-```bash
-docker build -t video-server .
-```
-Ps: ffmpeg folder with binaries must be in the root folder of the project to build image correctly. It can be downloaded [here](https://johnvansickle.com/ffmpeg/)
+## Host Machine DNS
 
-### Creating docker network
+This allows host machine to resolve localstack hostname to localhost
+
+```txt
+# Windows, hosts file
+127.0.0.1 video-server-localstack
+```
+
+## Docker Configuration
+
+### Network
+
+Creating bridge network to allow containers to resolve their hosts and comunicate with each other
+
 ```bash
 docker network create -d bridge video-server-net
 ```
 
-### Running container for debug purposes
+### Server (Apache)
+
 ```bash
+docker build -t video-server -f .docker/apache/Dockerfile .
+
+docker run --rm -d \
+    --name video-server \
+    --mount type=bind,src=./webapp,dst=/var/www \
+    --network video-server-net \
+    --add-host=host.docker.internal:host-gateway \
+    -p 8080:80 video-server
+
+# To debug purposes
 docker run --rm -it --network video-server-net --entrypoint /bin/bash video-server
 ```
 
-### Running server container
-```bash
-docker run --rm -d \
-    --name video-server \
-    --mount type=bind,src=./storage/videos,dst=/storage/videos \
-    --mount type=bind,src=./src,dst=/var/www/html \
-    --network video-server-net \
-    -p 8080:80 video-server
-```
-
-### Running database container
+### Database (MySQL)
 
 ```bash
 docker run --name video-server-mysql \
@@ -39,9 +48,31 @@ docker run --name video-server-mysql \
     -e MYSQL_ROOT_PASSWORD=root \
     -p 3306:3306 \
     -d mysql:8.0.40
+
+mysql -u user -ppassword -h video-server-mysql
 ```
 
-### Database connection
+### AWS (Localstack)
+
+Ps: ffmpeg folder with binaries must exist in the video_process lambda folder to deploy lambda correctly.
+
+You can download ffmpeg [here](https://johnvansickle.com/ffmpeg/)
+
+Link of the static build of ffmpeg compatible with lambda image [here](https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz)
+
 ```bash
-mysql -u user -ppassword -h video-server-mysql
+docker build -t video-server-localstack -f .docker/localstack/Dockerfile .
+
+docker run --name video-server-localstack --rm -d \
+    --network video-server-net \
+    --add-host=host.docker.internal:host-gateway \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v ./.docker/localstack:/etc/localstack/init/ready.d \
+    -v ./lambdas:/lambdas \
+    -p 4566:4566 \
+    -p 4510-4559:4510-4559 \
+    video-server-localstack
+
+# Check localstack Health
+curl -v --request GET http://localhost:4566/_localstack/health
 ```

@@ -6,7 +6,8 @@ CREATE TABLE users (
 );
 
 CREATE TABLE videos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY,
     title VARCHAR(50) NOT NULL,
+    object_id CHAR(36) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

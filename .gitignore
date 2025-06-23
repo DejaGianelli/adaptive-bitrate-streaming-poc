@@ -1,4 +1,4 @@
-ffmpeg
 storage/videos/*
 !storage/videos/.gitkeep
 *.mp4
+bkp
