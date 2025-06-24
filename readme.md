@@ -31,6 +31,7 @@ docker run --rm -d \
     --mount type=bind,src=./webapp,dst=/var/www \
     --network video-server-net \
     --add-host=host.docker.internal:host-gateway \
+    --add-host=video-processing.lambda-url.us-east-1.localhost.localstack.cloud:host-gateway \
     -p 8080:80 video-server
 
 # To debug purposes

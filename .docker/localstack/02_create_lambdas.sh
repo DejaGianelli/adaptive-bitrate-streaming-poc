@@ -21,3 +21,6 @@ awslocal lambda create-function-url-config \
 
 awslocal lambda get-function \
     --function-name video-processing-lambda
+
+awslocal lambda get-function-url-config \
+    --function-name video-processing-lambda

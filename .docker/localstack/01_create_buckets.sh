@@ -6,6 +6,6 @@ awslocal s3api create-bucket \
 # Configure bucket CORS to enable request using the browser’s XMLHttpRequest capability
 awslocal s3api put-bucket-cors \
     --bucket videos \
-    --cors-configuration file://cors-config.json
+    --cors-configuration file:///etc/localstack/init/ready.d/cors-config.json
 
 awslocal s3api list-buckets

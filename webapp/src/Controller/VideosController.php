@@ -12,6 +12,7 @@ use Cake\Validation\Validator;
 use DateTime;
 use Aws\Exception\AwsException;
 use Ramsey\Uuid\Uuid;
+use Cake\Http\Client;
 
 class VideosController extends AppController
 {
@@ -54,14 +55,18 @@ class VideosController extends AppController
             $video->id = Uuid::uuid4()->toString();
             $video->title = 'Default Title';
             $video->object_id = $key;
+            $video->status = "pending_processing";
 
-            $videosTable->save($video);
             $videosTable->getConnection()->transactional(function () use ($videosTable, $video) {
                 $videosTable->save($video);
+
+                $http = new Client();
+                $http->post(Configure::read('AWS.lambda.video-processing-lambda.host', [], [
+                    'timeout' => 3000,
+                ]));
             });
 
             return $this->response->withStatus(204)->withType('application/json');
-
         } catch (AwsException $e) {
             $errorDto = new ProblemDetails($e->getMessage(), 400, $this->formatValidationErrors($errors));
             return $this->response
