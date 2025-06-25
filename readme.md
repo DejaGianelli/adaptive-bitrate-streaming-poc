@@ -74,6 +74,19 @@ docker run --name video-server-localstack --rm -d \
     -p 4510-4559:4510-4559 \
     video-server-localstack
 
+# Update Lambda
+chmod +x ffmpeg/ffmpeg && \
+zip -r -q function.zip index.js package.json package-lock.json node_modules ffmpeg && \
+awslocal lambda update-function-code \
+    --function-name video-processing-lambda \
+    --zip-file fileb://function.zip
+
+# Invoking lambda via CLI
+awslocal lambda invoke \
+    --function-name video-processing-lambda \
+    --payload '{"key":"11180afb-e769-4892-b66c-1fe5d587cd96/upload"}' \
+    response.json
+
 # Check localstack Health
 curl -v --request GET http://localhost:4566/_localstack/health
 ```

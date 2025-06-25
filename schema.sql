@@ -8,7 +8,7 @@ CREATE TABLE users (
 CREATE TABLE videos (
     id CHAR(36) PRIMARY KEY,
     title VARCHAR(50) NOT NULL,
-    object_id CHAR(36) NOT NULL,
+    object_id CHAR(255) NOT NULL,
     status VARCHAR(32) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

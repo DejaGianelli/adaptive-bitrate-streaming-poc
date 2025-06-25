@@ -5,12 +5,15 @@ cd /lambdas/video_process
 chmod +x ffmpeg/ffmpeg
 zip -r -q function.zip index.js ffmpeg
 
+echo "Creating lambda with 15 min timeout"
+
 awslocal lambda create-function \
     --function-name video-processing-lambda \
     --runtime nodejs18.x \
     --zip-file fileb://function.zip \
     --handler index.handler \
     --role arn:aws:iam::000000000000:role/lambda-role \
+    --timeout 900 \
     --tags '{"_custom_id_":"video-processing"}'
 
 sleep 5 # Wait until function is available

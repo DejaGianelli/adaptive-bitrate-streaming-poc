@@ -13,6 +13,7 @@ use DateTime;
 use Aws\Exception\AwsException;
 use Ramsey\Uuid\Uuid;
 use Cake\Http\Client;
+use Cake\Log\Log;
 
 class VideosController extends AppController
 {
@@ -57,21 +58,39 @@ class VideosController extends AppController
             $video->object_id = $key;
             $video->status = "pending_processing";
 
-            $videosTable->getConnection()->transactional(function () use ($videosTable, $video) {
+            $videosTable->getConnection()->transactional(function () use ($videosTable, $video, $key) {
                 $videosTable->save($video);
 
                 $http = new Client();
-                $http->post(Configure::read('AWS.lambda.video-processing-lambda.host', [], [
-                    'timeout' => 3000,
-                ]));
+                $host = Configure::read('AWS.lambda.video-processing-lambda.host');
+                Log::debug('Calling lambda to process video. Url: ' . $host);
+                $http->post(
+                    $host,
+                    json_encode(["key" => $key]),
+                    [
+                        'timeout' => 30,
+                        'type' => 'json',
+                        'headers' => [
+                            'Accept' => 'application/json',
+                        ]
+                    ]
+                );
             });
 
             return $this->response->withStatus(204)->withType('application/json');
         } catch (AwsException $e) {
             $errorDto = new ProblemDetails($e->getMessage(), 400, $this->formatValidationErrors($errors));
+            Log::error('Error: ' . $e->getMessage());
             return $this->response
                 ->withType('application/json')
                 ->withStatus(400)
+                ->withStringBody(json_encode($errorDto->toArray()));
+        } catch (\Exception $e) {
+            $errorDto = new ProblemDetails("Internal Server Error", 500, $this->formatValidationErrors($errors));
+            Log::error('Error: ' . $e->getMessage());
+            return $this->response
+                ->withType('application/json')
+                ->withStatus(500)
                 ->withStringBody(json_encode($errorDto->toArray()));
         }
     }
@@ -95,7 +114,7 @@ class VideosController extends AppController
         }
 
         $expiration = new DateTime("+5 minutes");
-        $key = Uuid::uuid4()->toString();
+        $key = Uuid::uuid4()->toString() . "/upload.mp4";
         $bucket = Configure::read('AWS.s3.bucket');
         $command = $s3Client->getCommand('PutObject', [
             'Bucket' => $bucket,

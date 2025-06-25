@@ -48,9 +48,7 @@ const init = function init(event) {
         if (!preSignedUrl) {
             throw new Error("Could not fetch pre-signed url")
         }
-        const formData = new FormData()
-        formData.append("file", file)
-        await axios.put(preSignedUrl, formData, {
+        await axios.put(preSignedUrl, file, { //Pass file directly, not FormData as Blob
             headers: {
                 'Content-Type': 'video/mp4'
             },
