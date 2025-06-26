@@ -6,7 +6,8 @@ const path = require('path')
 const { pipeline } = require('stream')
 const { execSync } = require('child_process');
 
-const BUCKET_NAME = 'videos'
+let BUCKET_NAME = process.env.BUCKET
+let AWS_REGION = process.env.AWS_REGION
 
 /**
  * Lambda handler for processing videos in S3.
@@ -20,7 +21,9 @@ exports.handler = async (event) => {
     const key = body.key;
 
     try {
-        const s3Client = new S3Client()
+        const s3Client = new S3Client({
+            region: AWS_REGION
+        })
 
         const response = await s3Client.send(
             new GetObjectCommand({
@@ -112,9 +115,9 @@ exports.handler = async (event) => {
 
     } catch (caught) {
         if (caught instanceof NoSuchKey) {
-            console.error(`Error from S3 while getting object "${key}" from "${bucketName}". No such key exists.`)
+            console.error(`Error from S3 while getting object "${key}" from "${BUCKET_NAME}". No such key exists.`)
         } else if (caught instanceof S3ServiceException) {
-            console.error(`Error from S3 while getting object from ${bucketName}.  ${caught.name}: ${caught.message}`)
+            console.error(`Error from S3 while getting object from ${BUCKET_NAME}.  ${caught.name}: ${caught.message}`)
         } else {
             console.error(`Error ${caught.name}: ${caught.message}`)
             throw caught;

@@ -14,6 +14,7 @@ awslocal lambda create-function \
     --handler index.handler \
     --role arn:aws:iam::000000000000:role/lambda-role \
     --timeout 900 \
+    --environment "Variables={BUCKET=videos,AWS_REGION=us-east-1}" \
     --tags '{"_custom_id_":"video-processing"}'
 
 sleep 5 # Wait until function is available
