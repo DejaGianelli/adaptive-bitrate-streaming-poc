@@ -22,6 +22,21 @@ class VideosController extends AppController
         return $this->render("create", "main");
     }
 
+    public function view(S3Client $s3Client, string ...$path): ?Response
+    {
+        $videoId = $this->request->getParam('videoId');
+        $video = $this->fetchTable('Videos')
+            ->find()
+            ->where(['id' => $videoId])
+            ->first();
+
+        $manifestUrl = Configure::read('AWS.s3.videoBucketHost') . "/" . $video->getObjectIdRootPath() . "/manifest.mpd";
+        $this->set('videoTitle', $video->title);
+        $this->set('videoManifestUrl', $manifestUrl);
+
+        return $this->render("view", "main");
+    }
+
     public function create(S3Client $s3Client, string ...$path): ?Response
     {
         try {
@@ -72,6 +87,7 @@ class VideosController extends AppController
                         'type' => 'json',
                         'headers' => [
                             'Accept' => 'application/json',
+                            'X-Amz-Invocation-Type' => 'Event'
                         ]
                     ]
                 );

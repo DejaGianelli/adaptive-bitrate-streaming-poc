@@ -67,6 +67,11 @@ return function (RouteBuilder $routes): void {
          */
         $builder->connect('/pages/*', 'Pages::display');
 
+        $builder->connect('/videos/{videoId}', 
+                ['controller' => 'Videos', 'action' => 'view'],
+                ['_name' => 'videos:view']
+            )->setMethods(['GET']);
+
         $builder->connect('/videos/create', 
                 ['controller' => 'Videos', 'action' => 'createPage'],
                 ['_name' => 'videos:createPage']

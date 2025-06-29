@@ -17,95 +17,8 @@ let BUCKET_HOST = process.env.BUCKET_HOST
  * @returns {Promise<string>} Success message
  */
 exports.handler = async (event) => {
-
-    const body = JSON.parse(event.body);
-    const key = body.key;
-
     try {
-        const s3Client = new S3Client({
-            region: AWS_REGION
-        })
-
-        const response = await s3Client.send(
-            new GetObjectCommand({
-                Bucket: BUCKET_NAME,
-                Key: key,
-            }),
-        )
-        const streamPipeline = promisify(pipeline)
-        const downloadedPath = "/tmp/" + key
-        const downloadedDir = path.dirname(downloadedPath)
-        await promises.mkdir(downloadedDir, { recursive: true })
-        await streamPipeline(response.Body, createWriteStream(downloadedPath))
-
-        console.log(`File downloaded to: ${downloadedPath}. Starting representation generation`)
-
-        let bitRateLadder = {
-            "240": { "resolution": "240p", "bitrate": "500k", "maxrate": "1000k" },
-            "360": { "resolution": "360p", "bitrate": "1000k", "maxrate": "2000k" },
-            "480": { "resolution": "480p", "bitrate": "1500k", "maxrate": "3000k" },
-            "720": { "resolution": "720p", "bitrate": "3000k", "maxrate": "6000k" },
-            "1080": { "resolution": "1080p", "bitrate": "5000k", "maxrate": "10000k" },
-        }
-
-        Object.entries(bitRateLadder).forEach(function ([key,]) {
-            if (Number(key) > 720) {
-                delete bitRateLadder[key]
-            }
-        })
-
-        // Creating representation dirs
-        Object.entries(bitRateLadder).forEach(async function ([, value]) {
-            await promises.mkdir(downloadedDir + "/" + value.resolution, { recursive: true })
-        })
-
-        const cmd = buildFFmpegCommand(downloadedPath, downloadedDir, bitRateLadder, key)
-
-        console.log("FFMPEG cmd: " + cmd);
-
-        execSync(cmd, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Error: ${error.message}`);
-                return;
-            }
-            if (stderr) {
-                console.error(`FFmpeg stderr: ${stderr}`);
-            }
-            console.log(`Output: ${stdout}`);
-        });
-
-        console.log(`Starting uploading DASH files`)
-
-        const files = readdirSync(downloadedDir, { withFileTypes: true })
-            .filter(function (file) {
-                if (file.isDirectory()) {
-                    return false
-                }
-                if (file.name == "upload.mp4") {
-                    return false
-                }
-                return true
-            })
-
-        await Promise.all(files.map(file => {
-
-            const fullPath = `${downloadedDir}/${file.name}`
-            const s3Key = `${path.dirname(key)}/${file.name}`
-
-            console.log(`Uploading file ${fullPath} to S3 with key ${s3Key}`)
-
-            return new Upload({
-                client: s3Client,
-                params: {
-                    Bucket: BUCKET_NAME,
-                    Key: s3Key,
-                    Body: createReadStream(fullPath),
-                }
-            }).done()
-        }))
-
-        console.log('Video processing completed!');
-
+        processAsync(event)
         return {
             statusCode: 200,
             body: JSON.stringify({
@@ -113,7 +26,6 @@ exports.handler = async (event) => {
                 output: 'Downloaded: ' + downloadedPath
             })
         }
-
     } catch (caught) {
         if (caught instanceof NoSuchKey) {
             console.error(`Error from S3 while getting object "${key}" from "${BUCKET_NAME}". No such key exists.`)
@@ -131,6 +43,104 @@ exports.handler = async (event) => {
                 stderr: error.stderr?.toString()
             })
         }
+    }
+}
+
+async function processAsync(event) {
+
+    const body = JSON.parse(event.body);
+    const key = body.key;
+
+    const s3Client = new S3Client({
+        region: AWS_REGION
+    })
+
+    const response = await s3Client.send(
+        new GetObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: key,
+        }),
+    )
+    const streamPipeline = promisify(pipeline)
+    const downloadedPath = "/tmp/" + key
+    const downloadedDir = path.dirname(downloadedPath)
+    await promises.mkdir(downloadedDir, { recursive: true })
+    await streamPipeline(response.Body, createWriteStream(downloadedPath))
+
+    console.log(`File downloaded to: ${downloadedPath}. Starting representation generation`)
+
+    let bitRateLadder = {
+        "240": { "resolution": "240p", "bitrate": "500k", "maxrate": "1000k" },
+        "360": { "resolution": "360p", "bitrate": "1000k", "maxrate": "2000k" },
+        "480": { "resolution": "480p", "bitrate": "1500k", "maxrate": "3000k" },
+        "720": { "resolution": "720p", "bitrate": "3000k", "maxrate": "6000k" },
+        "1080": { "resolution": "1080p", "bitrate": "5000k", "maxrate": "10000k" },
+    }
+
+    Object.entries(bitRateLadder).forEach(function ([key,]) {
+        if (Number(key) > 720) {
+            delete bitRateLadder[key]
+        }
+    })
+
+    // Creating representation dirs
+    Object.entries(bitRateLadder).forEach(async function ([, value]) {
+        await promises.mkdir(downloadedDir + "/" + value.resolution, { recursive: true })
+    })
+
+    const cmd = buildFFmpegCommand(downloadedPath, downloadedDir, bitRateLadder, key)
+
+    console.log("FFMPEG cmd: " + cmd);
+
+    execSync(cmd, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error: ${error.message}`);
+            return;
+        }
+        if (stderr) {
+            console.error(`FFmpeg stderr: ${stderr}`);
+        }
+        console.log(`Output: ${stdout}`);
+    });
+
+    console.log(`Starting uploading DASH files`)
+
+    const files = readdirSync(downloadedDir, { withFileTypes: true })
+        .filter(function (file) {
+            if (file.isDirectory()) {
+                return false
+            }
+            if (file.name == "upload.mp4") {
+                return false
+            }
+            return true
+        })
+
+    await Promise.all(files.map(file => {
+
+        const fullPath = `${downloadedDir}/${file.name}`
+        const s3Key = `${path.dirname(key)}/${file.name}`
+
+        console.log(`Uploading file ${fullPath} to S3 with key ${s3Key}`)
+
+        return new Upload({
+            client: s3Client,
+            params: {
+                Bucket: BUCKET_NAME,
+                Key: s3Key,
+                Body: createReadStream(fullPath),
+            }
+        }).done()
+    }))
+
+    console.log('Video processing completed!');
+
+    return {
+        statusCode: 200,
+        body: JSON.stringify({
+            message: 'Execution successful',
+            output: 'Downloaded: ' + downloadedPath
+        })
     }
 }
 
