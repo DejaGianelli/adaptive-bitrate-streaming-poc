@@ -84,7 +84,7 @@ awslocal lambda update-function-code \
 # Invoking lambda via CLI
 awslocal lambda invoke \
     --function-name video-processing-lambda \
-    --payload '{"key":"11180afb-e769-4892-b66c-1fe5d587cd96/upload"}' \
+    --payload '{"key":"<OBJECT_KEY>"}' \
     response.json
 
 # Check localstack Health

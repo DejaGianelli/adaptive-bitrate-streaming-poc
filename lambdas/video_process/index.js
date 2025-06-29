@@ -8,6 +8,7 @@ const { execSync } = require('child_process');
 
 let BUCKET_NAME = process.env.BUCKET
 let AWS_REGION = process.env.AWS_REGION
+let BUCKET_HOST = process.env.BUCKET_HOST
 
 /**
  * Lambda handler for processing videos in S3.
@@ -58,7 +59,7 @@ exports.handler = async (event) => {
             await promises.mkdir(downloadedDir + "/" + value.resolution, { recursive: true })
         })
 
-        const cmd = buildFFmpegCommand(downloadedPath, downloadedDir, null, bitRateLadder)
+        const cmd = buildFFmpegCommand(downloadedPath, downloadedDir, bitRateLadder, key)
 
         console.log("FFMPEG cmd: " + cmd);
 
@@ -133,9 +134,10 @@ exports.handler = async (event) => {
     }
 }
 
-function buildFFmpegCommand(uploadFile, uploadsDir, videoId = null, bitRateLadder) {
-    const pathParts = path.parse(uploadFile);
-    const representationsCount = Object.keys(bitRateLadder).length;
+function buildFFmpegCommand(uploadFile, uploadsDir, bitRateLadder, key) {
+    const objectIdRootPath = key.split("/")[0]
+    const pathParts = path.parse(uploadFile)
+    const representationsCount = Object.keys(bitRateLadder).length
 
     let cmd = '( ';
 
@@ -194,12 +196,16 @@ function buildFFmpegCommand(uploadFile, uploadsDir, videoId = null, bitRateLadde
     cmd += '-adaptation_sets "id=0,streams=v id=1,streams=a" '
     cmd += '-init_seg_name "init-stream\\$RepresentationID\\$.m4s" '
     cmd += '-media_seg_name "chunk-stream\\$RepresentationID\\$-\\$Number%05d\\$.m4s" '
-    cmd += `-f dash ${uploadsDir}/manifest.mpd ) `
+    cmd += `-f dash ${uploadsDir}/manifest.mpd ) && `
 
     // TODO
     // Part 3: Modify manifest
-    //cmd += `sed -i 's|initialization="init-|initialization="segment.php?videoid=${videoId}\\&amp;file=init-|g' ${uploadsDir}/manifest.mpd && `;
-    //cmd += `sed -i 's|media="chunk-|media="segment.php?videoid=${videoId}\\&amp;file=chunk-|g' ${uploadsDir}/manifest.mpd`;
+
+    const initializationSedUrl = `${BUCKET_HOST}/${objectIdRootPath}/init-`
+    const mediaSedUrl = `${BUCKET_HOST}/${objectIdRootPath}/chunk-`
+
+    cmd += `sed -i 's|initialization="init-|initialization="${initializationSedUrl}|g' ${uploadsDir}/manifest.mpd && `;
+    cmd += `sed -i 's|media="chunk-|media="${mediaSedUrl}|g' ${uploadsDir}/manifest.mpd`;
 
     return cmd;
 }
