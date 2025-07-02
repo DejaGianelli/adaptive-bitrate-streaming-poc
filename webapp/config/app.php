@@ -440,5 +440,24 @@ return [
         'forceEnable' => filter_var(env('DEBUG_KIT_FORCE_ENABLE', false), FILTER_VALIDATE_BOOLEAN),
         'safeTld' => env('DEBUG_KIT_SAFE_TLD', null),
         'ignoreAuthorization' => env('DEBUG_KIT_IGNORE_AUTHORIZATION', false),
-    ]
+    ],
+
+    'AWS' => [
+        'endpoint' => null,
+        'region' => 'us-east-1',
+        's3' => [
+            'buckets' => [
+                'videos' => [
+                    'name' => env('AWS_S3_BUCKET', 'videos'),
+                    'host' => env('VIDEO_BUCKET_HOST', 'http://videos.s3.us-east-1.localhost.localstack.cloud:4566')
+                ]
+            ]
+        ],
+        'lambda' => [
+            'video-processing-lambda' => [
+                'name' => env('AWS_LAMBDA_VIDEO_PROCESSING_NAME', 'video-processing-lambda'),
+                'host' => env('AWS_LAMBDA_VIDEO_PROCESSING_HOST', 'http://video-processing.lambda-url.us-east-1.localhost.localstack.cloud:4566')
+            ]
+        ]
+    ],
 ];

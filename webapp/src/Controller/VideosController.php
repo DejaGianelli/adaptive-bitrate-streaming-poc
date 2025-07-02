@@ -12,7 +12,7 @@ use Cake\Validation\Validator;
 use DateTime;
 use Aws\Exception\AwsException;
 use Ramsey\Uuid\Uuid;
-use Cake\Http\Client;
+use Aws\Lambda\LambdaClient;
 use Cake\Log\Log;
 
 class VideosController extends AppController
@@ -30,14 +30,14 @@ class VideosController extends AppController
             ->where(['id' => $videoId])
             ->first();
 
-        $manifestUrl = Configure::read('AWS.s3.videoBucketHost') . "/" . $video->getObjectIdRootPath() . "/manifest.mpd";
+        $manifestUrl = Configure::read('AWS.s3.buckets.videos.host') . `/{$video->getObjectIdRootPath()}/manifest.mpd`;
         $this->set('videoTitle', $video->title);
         $this->set('videoManifestUrl', $manifestUrl);
 
         return $this->render("view", "main");
     }
 
-    public function create(S3Client $s3Client, string ...$path): ?Response
+    public function create(S3Client $s3Client, LambdaClient $lambdaClient, string ...$path): ?Response
     {
         try {
             $isPost = $this->request->is('post');
@@ -58,7 +58,7 @@ class VideosController extends AppController
             }
 
             $key = $this->request->getData('key');
-            $bucket = Configure::read('AWS.s3.bucket');
+            $bucket = Configure::read('AWS.s3.buckets.videos.name');
 
             $s3Client->headObject([
                 'Bucket' => $bucket,
@@ -73,24 +73,18 @@ class VideosController extends AppController
             $video->object_id = $key;
             $video->status = "pending_processing";
 
-            $videosTable->getConnection()->transactional(function () use ($videosTable, $video, $key) {
+            $videosTable->getConnection()->transactional(function () use ($videosTable, $video, $key, $lambdaClient) {
                 $videosTable->save($video);
+            
+                Log::debug('Invoking lambda to process video.');
 
-                $http = new Client();
-                $host = Configure::read('AWS.lambda.video-processing-lambda.host');
-                Log::debug('Calling lambda to process video. Url: ' . $host);
-                $http->post(
-                    $host,
-                    json_encode(["key" => $key]),
-                    [
-                        'timeout' => 30,
-                        'type' => 'json',
-                        'headers' => [
-                            'Accept' => 'application/json',
-                            'X-Amz-Invocation-Type' => 'Event'
-                        ]
-                    ]
-                );
+                $body = json_encode(["key" => $key]);
+                $lambdaClient->invoke([
+                    'InvocationType' => 'Event',
+                    'FunctionName' => Configure::read('AWS.lambda.video-processing-lambda.name'),
+                    'Payload' => json_encode(["body" => $body]),
+                    'LogType' => "None",
+                ]);
             });
 
             return $this->response->withStatus(204)->withType('application/json');
@@ -131,7 +125,7 @@ class VideosController extends AppController
 
         $expiration = new DateTime("+5 minutes");
         $key = Uuid::uuid4()->toString() . "/upload.mp4";
-        $bucket = Configure::read('AWS.s3.bucket');
+        $bucket = Configure::read('AWS.s3.buckets.videos.name');
         $command = $s3Client->getCommand('PutObject', [
             'Bucket' => $bucket,
             'Key' => $key,

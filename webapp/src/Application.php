@@ -18,7 +18,7 @@ declare(strict_types=1);
 
 namespace App;
 
-use App\Service\VideosS3Client;
+use Aws\Lambda\LambdaClient;
 use Aws\S3\S3Client;
 use Cake\Core\Configure;
 use Cake\Core\ContainerInterface;
@@ -32,6 +32,7 @@ use Cake\Log\Log;
 use Cake\ORM\Locator\TableLocator;
 use Cake\Routing\Middleware\AssetMiddleware;
 use Cake\Routing\Middleware\RoutingMiddleware;
+use Aws\Credentials\CredentialProvider;
 
 /**
  * Application setup class.
@@ -121,13 +122,23 @@ class Application extends BaseApplication
     public function services(ContainerInterface $container): void
     {
         $container->add(S3Client::class, function () use ($container) {
-            $s3Config = Configure::read('AWS.s3');
             return new S3Client([
                 'profile' => 'default',
-                'region' => $s3Config['region'],
-                'version' => $s3Config['sdkVersion'],
+                'region' => 'us-east-1',
+                'version' => 'latest',
                 'use_path_style_endpoint' => true, // ✅ important!
                 'endpoint' => Configure::read('AWS.endpoint'),
+                'credentials' => CredentialProvider::env()
+            ]);
+        });
+
+        $container->add(LambdaClient::class, function () use ($container) {
+            return new LambdaClient([
+                'region' => 'us-east-1',
+                'version' => 'latest',
+                'profile' => 'default',
+                'endpoint' => Configure::read('AWS.endpoint'),
+                'credentials' => CredentialProvider::env()
             ]);
         });
     }

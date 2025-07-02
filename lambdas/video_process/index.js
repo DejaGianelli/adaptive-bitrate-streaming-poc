@@ -18,12 +18,12 @@ let BUCKET_HOST = process.env.BUCKET_HOST
  */
 exports.handler = async (event) => {
     try {
-        processAsync(event)
+        await process(event)
         return {
             statusCode: 200,
             body: JSON.stringify({
                 message: 'Execution successful',
-                output: 'Downloaded: ' + downloadedPath
+                output: 'Downloaded'
             })
         }
     } catch (caught) {
@@ -46,7 +46,7 @@ exports.handler = async (event) => {
     }
 }
 
-async function processAsync(event) {
+async function process(event) {
 
     const body = JSON.parse(event.body);
     const key = body.key;
@@ -208,7 +208,6 @@ function buildFFmpegCommand(uploadFile, uploadsDir, bitRateLadder, key) {
     cmd += '-media_seg_name "chunk-stream\\$RepresentationID\\$-\\$Number%05d\\$.m4s" '
     cmd += `-f dash ${uploadsDir}/manifest.mpd ) && `
 
-    // TODO
     // Part 3: Modify manifest
 
     const initializationSedUrl = `${BUCKET_HOST}/${objectIdRootPath}/init-`

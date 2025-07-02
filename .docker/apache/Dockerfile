@@ -2,7 +2,7 @@ FROM php:8.4.8-apache
 
 # Network tools for debugging purposes
 RUN apt-get update && \
-    apt-get install -y iputils-ping net-tools traceroute curl dnsutils libicu-dev && \
+    apt-get install -y iputils-ping net-tools traceroute curl dnsutils libicu-dev vim && \
     apt-get clean
 
 # Mysql

@@ -4,7 +4,7 @@ ENV SERVICES="s3,lambda"
 
 # Network tools for debugging purposes
 RUN apt-get update && \
-    apt-get install -y iputils-ping net-tools traceroute curl dnsutils zip && \
+    apt-get install -y iputils-ping net-tools traceroute curl dnsutils zip vim && \
     apt-get clean
 
 EXPOSE 4566
