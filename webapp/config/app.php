@@ -279,6 +279,12 @@ return [
          * in app_local.php depending on the application's needs.
          */
         'default' => [
+            'host' => env('DATABASE_HOST'),
+            'port' => env('DATABASE_PORT'),
+            'username' => env('DATABASE_USERNAME'),
+            'password' => env('DATABASE_PASSWORD'),
+            'database' => env('DATABASE_NAME'),
+            'url' => env('DATABASE_URL'),
             'className' => Connection::class,
             'driver' => Mysql::class,
             'persistent' => false,
@@ -448,15 +454,15 @@ return [
         's3' => [
             'buckets' => [
                 'videos' => [
-                    'name' => env('AWS_S3_BUCKET', 'videos'),
-                    'host' => env('VIDEO_BUCKET_HOST', 'http://videos.s3.us-east-1.localhost.localstack.cloud:4566')
+                    'name' => env('AWS_S3_BUCKET'),
+                    'host' => env('VIDEO_BUCKET_HOST')
                 ]
             ]
         ],
         'lambda' => [
             'video-processing-lambda' => [
-                'name' => env('AWS_LAMBDA_VIDEO_PROCESSING_NAME', 'video-processing-lambda'),
-                'host' => env('AWS_LAMBDA_VIDEO_PROCESSING_HOST', 'http://video-processing.lambda-url.us-east-1.localhost.localstack.cloud:4566')
+                'name' => env('AWS_LAMBDA_VIDEO_PROCESSING_NAME'),
+                'host' => env('AWS_LAMBDA_VIDEO_PROCESSING_HOST')
             ]
         ]
     ],
