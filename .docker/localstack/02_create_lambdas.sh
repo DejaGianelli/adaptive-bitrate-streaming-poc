@@ -3,7 +3,7 @@ cd /lambdas/video_process
 
 # Put ffmpeg in the lambda
 chmod +x ffmpeg/ffmpeg
-zip -r -q function.zip index.js ffmpeg
+zip -r -q function.zip index.js package.json package-lock.json node_modules ffmpeg
 
 echo "Creating lambda with 15 min timeout"
 
@@ -14,7 +14,7 @@ awslocal lambda create-function \
     --handler index.handler \
     --role arn:aws:iam::000000000000:role/lambda-role \
     --timeout 900 \
-    --environment "Variables={BUCKET=videos,AWS_REGION=us-east-1,BUCKET_HOST=http://videos.s3.us-east-1.localhost.localstack.cloud:4566}" \
+    --environment "Variables={BUCKET=videos,AWS_REGION=us-east-1,STREAMING_BASE_URL=http://localhost:8080/videos/streaming}" \
     --tags '{"_custom_id_":"video-processing"}'
 
 sleep 5 # Wait until function is available

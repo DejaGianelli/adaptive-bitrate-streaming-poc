@@ -6,9 +6,9 @@ const path = require('path')
 const { pipeline } = require('stream')
 const { execSync } = require('child_process');
 
-let BUCKET_NAME = process.env.BUCKET
-let AWS_REGION = process.env.AWS_REGION
-let BUCKET_HOST = process.env.BUCKET_HOST
+const BUCKET_NAME = process.env.BUCKET
+const AWS_REGION = process.env.AWS_REGION
+const STREAMING_BASE_URL = process.env.STREAMING_BASE_URL
 
 /**
  * Lambda handler for processing videos in S3.
@@ -18,7 +18,7 @@ let BUCKET_HOST = process.env.BUCKET_HOST
  */
 exports.handler = async (event) => {
     try {
-        await process(event)
+        await processVideo(event)
         return {
             statusCode: 200,
             body: JSON.stringify({
@@ -46,7 +46,7 @@ exports.handler = async (event) => {
     }
 }
 
-async function process(event) {
+async function processVideo(event) {
 
     const body = JSON.parse(event.body);
     const key = body.key;
@@ -210,8 +210,8 @@ function buildFFmpegCommand(uploadFile, uploadsDir, bitRateLadder, key) {
 
     // Part 3: Modify manifest
 
-    const initializationSedUrl = `${BUCKET_HOST}/${objectIdRootPath}/init-`
-    const mediaSedUrl = `${BUCKET_HOST}/${objectIdRootPath}/chunk-`
+    const initializationSedUrl = `${STREAMING_BASE_URL}?f=${objectIdRootPath}/init-`
+    const mediaSedUrl = `${STREAMING_BASE_URL}?f=${objectIdRootPath}/chunk-`
 
     cmd += `sed -i 's|initialization="init-|initialization="${initializationSedUrl}|g' ${uploadsDir}/manifest.mpd && `;
     cmd += `sed -i 's|media="chunk-|media="${mediaSedUrl}|g' ${uploadsDir}/manifest.mpd`;

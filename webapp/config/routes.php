@@ -77,6 +77,16 @@ return function (RouteBuilder $routes): void {
                 ['_name' => 'videos:createPage']
             )->setMethods(['GET']);
 
+        $builder->connect('/videos/streaming', 
+                ['controller' => 'Videos', 'action' => 'streaming'],
+                ['_name' => 'videos:streaming']
+            )->setMethods(['GET']);
+        
+        $builder->connect('/videos/{videoId}/manifest', 
+            ['controller' => 'Videos', 'action' => 'manifest'],
+            ['_name' => 'videos:manifest']
+        )->setMethods(['GET', 'HEAD']);
+
         $builder->connect('/videos/create', 
                 ['controller' => 'Videos', 'action' => 'create'], 
                 ['_name' => 'videos:create']

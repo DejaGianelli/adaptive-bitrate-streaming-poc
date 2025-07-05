@@ -78,6 +78,9 @@ class Application extends BaseApplication
             if (str_starts_with($request->getPath(), '/videos/create')) {
                 return true;
             }
+            if (str_starts_with($request->getPath(), '/videos/streaming')) {
+                return true;
+            }
             if (str_starts_with($request->getPath(), '/videos/pre-signed-url')) {
                 return true;
             }

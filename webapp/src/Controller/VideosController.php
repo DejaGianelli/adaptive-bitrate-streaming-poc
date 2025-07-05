@@ -14,12 +14,80 @@ use Aws\Exception\AwsException;
 use Ramsey\Uuid\Uuid;
 use Aws\Lambda\LambdaClient;
 use Cake\Log\Log;
+use Cake\Routing\Router;
+use Laminas\Diactoros\Stream;
 
 class VideosController extends AppController
 {
     public function createPage(string ...$path): ?Response
     {
         return $this->render("create", "main");
+    }
+
+    public function streaming(S3Client $s3Client, string ...$path): ?Response
+    {
+        try {
+            $key = $this->request->getQuery('f');
+            $bucket = Configure::read('AWS.s3.buckets.videos.name');
+
+            $result = $s3Client->getObject([
+                'Bucket' => $bucket,
+                'Key' => $key,
+                '@http' => [
+                    'stream' => true,
+                ],
+            ]);
+
+            $resource = $result['Body']->detach();
+            $body = new Stream($resource);
+
+            return $this->response
+                    ->withType($result['ContentType'])
+                    ->withHeader('Content-Length', $result['ContentLength'])
+                    ->withBody($body);
+
+        } catch (AwsException $e) {
+            return $this->response
+                ->withStatus(404)
+                ->withStringBody('File not found');
+        }
+    }
+
+    public function manifest(S3Client $s3Client, string ...$path): ?Response
+    {
+        try {
+            if ($this->request->getMethod() == "HEAD") {
+                return $this->response->withType("application/dash+xml");
+            }
+            
+            $videoId = $this->request->getParam('videoId');
+            $video = $this->fetchTable('Videos')
+                ->find()
+                ->where(['id' => $videoId])
+                ->first();
+            
+            $key = $video->getObjectIdRootPath() . '/manifest.mpd';
+            $bucket = Configure::read('AWS.s3.buckets.videos.name');
+
+            $result = $s3Client->getObject([
+                'Bucket' => $bucket,
+                'Key' => $key,
+                '@http' => [
+                    'stream' => true,
+                ],
+            ]);
+
+            $resource = $result['Body']->detach();
+            $body = new Stream($resource);
+
+            return $this->response->withType("application/dash+xml")
+                    ->withBody($body);
+
+        } catch (AwsException $e) {
+            return $this->response
+                ->withStatus(404)
+                ->withStringBody($e->getMessage());
+        }
     }
 
     public function view(S3Client $s3Client, string ...$path): ?Response
@@ -30,7 +98,10 @@ class VideosController extends AppController
             ->where(['id' => $videoId])
             ->first();
 
-        $manifestUrl = Configure::read('AWS.s3.buckets.videos.host') . `/{$video->getObjectIdRootPath()}/manifest.mpd`;
+        $manifestUrl = Router::url([
+            '_name' => 'videos:manifest',
+            'videoId' => $videoId,
+        ]);
         $this->set('videoTitle', $video->title);
         $this->set('videoManifestUrl', $manifestUrl);
 
@@ -75,7 +146,7 @@ class VideosController extends AppController
 
             $videosTable->getConnection()->transactional(function () use ($videosTable, $video, $key, $lambdaClient) {
                 $videosTable->save($video);
-            
+
                 Log::debug('Invoking lambda to process video.');
 
                 $body = json_encode(["key" => $key]);
